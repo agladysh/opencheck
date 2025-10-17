@@ -1,0 +1,24 @@
+{
+  "name": "@opencheck/cli",
+  "description": "TBD",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/main.ts",
+  "bin": {
+    "opencheck": "./src/main.ts"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "prepack": "tsc --emitDeclarationOnly"
+  },
+  "dependencies": {
+    "@opencheck/lib": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.1",
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "name": "@opencheck/workspace",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "TBD",
+  "scripts": {
+    "build": "pnpm -r build",
+    "clean:dist": "rm -rf packages/*/dist dist",
+    "clean:ts": "rm -f tsconfig.*.tsbuildinfo",
+    "clean:reports": "rm -rf .tap .nyc_output coverage",
+    "clean:logs": "rm -rf .vibe-checkup/logs",
+    "clean": "pnpm -s run clean:dist && pnpm -s run clean:ts && pnpm -s run clean:reports && pnpm -s run clean:logs",
+    "clean:ci": "rm -rf **/node_modules && pnpm -s run clean",
+    "clean:all": "rm pnpm-lock.yaml && pnpm -s run clean:ci",
+    "test:tap": "tap --disable-coverage --node-arg='--env-file-if-exists=.env' --reporter=min",
+    "test:all": "pnpm -s run test:tap",
+    "test": "pnpm -s run lint && pnpm -s run build && pnpm -s run test:all",
+    "test:ci": "bash -lc 'set -euo pipefail; export CI=true; pnpm -s run clean:ci && pnpm -s install && pnpm -s test'",
+    "test:fix": "pnpm -s run fix && pnpm -s run build && pnpm -s run test:all",
+    "test:snapshot": "pnpm -s run test:snapshot:tap",
+    "test:snapshot:tap": "tap --disable-coverage --node-arg='--env-file-if-exists=.env' --reporter=min --snapshot",
+    "lint:eslint": "eslint",
+    "lint:prettier": "prettier --check .",
+    "lint:tsc": "tsc --noEmit",
+    "lint:markdownlint": "markdownlint .",
+    "lint": "pnpm -s run lint:tsc && pnpm -s run lint:eslint && pnpm -s run lint:prettier && pnpm -s run lint:markdownlint",
+    "fix:eslint": "eslint --fix",
+    "fix:prettier": "prettier --write .",
+    "fix:markdownlint": "markdownlint --fix .",
+    "fix": "pnpm -s run fix:eslint && pnpm -s run fix:prettier && pnpm -s run fix:markdownlint",
+    "md:fix": "pnpm -s run fix:prettier && pnpm -s run fix:markdownlint",
+    "lefthook:precommit": "pnpm -s exec lefthook run pre-commit",
+    "link": "pnpm uninstall -g @opencheck/cli || true && pnpm link --global \"$(pwd)/packages/cli\""
+  },
+  "keywords": [
+    "TBD"
+  ],
+  "author": "Alexander Gladysh <agladysh@gmail.com>",
+  "license": "MIT",
+  "packageManager": "pnpm@10.18.2",
+  "dependencies": {
+    "@opencheck/cli": "workspace:*",
+    "@opencheck/lib": "workspace:*"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@types/node": "^24.5.1",
+    "eslint": "^9.34.0",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "globals": "^16.3.0",
+    "lefthook": "^1.13.1",
+    "markdownlint-cli": "^0.45.0",
+    "prettier": "^3.6.2",
+    "tap": "^21.1.0",
+    "ts-morph": "^27.0.0",
+    "tsc-files": "^1.1.4",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.44.0"
+  }
+}

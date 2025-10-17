@@ -1,0 +1,27 @@
+{
+  "name": "@opencheck/lib",
+  "description": "OpenCheck Library",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./*": "./src/*"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "prepack": "tsc --emitDeclarationOnly"
+  },
+  "dependencies": {
+    "execa": "^9.6.0",
+    "ignore": "^7.0.5",
+    "istextorbinary": "^9.5.0",
+    "minimatch": "^10.0.3",
+    "yaml": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.1",
+    "typescript": "^5.9.2"
+  }
+}

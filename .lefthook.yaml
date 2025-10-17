@@ -1,0 +1,17 @@
+assert_lefthook_installed: true
+pre-commit:
+  parallel: true
+  commands:
+    prettier:
+      run: pnpm -s exec prettier --check {staged_files}
+    eslint:
+      glob: '*.{js,cjs,mjs,ts,tsx,cts,mts,mts}'
+      run: pnpm -s exec eslint {staged_files}
+    markdownlint:
+      glob: '*.{md}'
+      run: pnpm -s exec markdownlint {staged_files}
+    tsc:
+      exclude:
+        - 'eslint.config.mjs'
+      glob: '*.{ts,tsx,cts,mts,mts}' # tsc-files does not support JS files
+      run: pnpm exec tsc-files --noEmit {staged_files} # We run tsc-files because plain tsc ignores config when fed file list
