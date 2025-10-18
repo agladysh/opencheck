@@ -20,6 +20,7 @@
     "istextorbinary": "^9.5.0",
     "minimatch": "^10.0.3",
     "ts-brand": "^0.2.0",
+    "vfile-message": "^4.0.3",
     "yaml": "^2.8.1"
   },
   "devDependencies": {

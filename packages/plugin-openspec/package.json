@@ -15,10 +15,27 @@
     "prepack": "tsc --emitDeclarationOnly"
   },
   "dependencies": {
-    "@opencheck/lib": "workspace:*"
+    "@opencheck/lib": "workspace:*",
+    "mdast-util-to-markdown": "^2.1.2",
+    "remark-gfm": "^4.0.1",
+    "remark-message-control": "^8.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-stringify": "^11.0.0",
+    "unified": "^11.0.5",
+    "unified-lint-rule": "^3.0.1",
+    "unist-util-is": "^6.0.1",
+    "unist-util-position": "^5.0.0",
+    "unist-util-visit-parents": "^6.0.2",
+    "vfile": "^6.0.3",
+    "vfile-message": "^4.0.3",
+    "vfile-reporter": "^8.1.1",
+    "vfile-reporter-position": "^0.1.7",
+    "vfile-reporter-pretty": "^7.0.0",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/node": "^24.5.1",
+    "@types/unist": "^3.0.3",
     "typescript": "^5.9.2"
   }
 }

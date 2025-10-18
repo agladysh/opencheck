@@ -15,6 +15,7 @@ export const FlagContext = MakeContext<FlagContext>('opencheck.flag');
 export type ProjectFilenamesContext = MakeContext<'opencheck.project.filenames', string[]>;
 export const ProjectFilenamesContext = MakeContext<ProjectFilenamesContext>('opencheck.project.filenames');
 
+// TODO: Use VFile instead!
 export interface ProjectFile {
   readonly rpath: string;
   readonly value: string;

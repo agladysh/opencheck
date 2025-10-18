@@ -1,6 +1,17 @@
-import { ProjectFilesContext, FlagContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
-import { ContextRef, RuleID, type RuntimeContext, type Rule } from '@opencheck/lib/types/OpenCheck/Rule.ts';
+import { FlagContext, ProjectFilesContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
+import { ContextRef, RuleID, type Rule, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
 import type { SkipVerdict, Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
+import { vFileMessagesToFailVerdict } from '@opencheck/lib/vFileMessagesToFailVerdict.ts';
+import { toMarkdown } from 'mdast-util-to-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMessageControl from 'remark-message-control';
+import remarkParse from 'remark-parse';
+import { unified } from 'unified';
+import type { Parent } from 'unist';
+import { visitParents } from 'unist-util-visit-parents';
+import { VFile } from 'vfile';
+import { VFileMessage } from 'vfile-message';
+import pkg from '../../../../package.json' with { type: 'json' };
 
 const id = RuleID('openspec/consistency/archived/tasks-completed');
 
@@ -10,6 +21,57 @@ const RuleContextMap = {
 } as const;
 
 type RuleContext = RuntimeContext<typeof RuleContextMap>;
+
+// TODO: Consider trying xo instead of raw eslint
+// TODO: Add exports/package.json linter
+
+function changeIdFromPath(path: string): string {
+  return (/archive\/\d\d\d\d-\d\d-\d\d-([^/]*?)\/.*$/.exec(path) ?? [])[1] ?? '(unknown)';
+}
+
+export async function delme(md: string) {
+  console.log(md);
+
+  const file = new VFile(md);
+  file.path = 'archive/2025-10-18-my-change/tasks.md';
+
+  const tree = unified()
+    .use(remarkParse)
+    .use(remarkGfm)
+    .use(remarkMessageControl, { name: pkg.name, enable: [id], known: [id] })
+    .parse(file);
+
+  const messages: VFileMessage[] = [];
+
+  visitParents(
+    tree,
+    {
+      type: 'listItem',
+      checked: false,
+    },
+    (node: Parent, parents) => {
+      console.log(node);
+      const task = toMarkdown(node.children[0] as Parameters<typeof toMarkdown>[0]).trim();
+      const msg = new VFileMessage(
+        `Change "${changeIdFromPath(file.path)}" was archived with incomplete task "${task}"`,
+        {
+          ancestors: [...parents, node],
+          ruleId: id,
+          source: pkg.name,
+          // url: TODO
+        }
+      );
+      msg.fatal = true;
+      msg.actual = `- [ ] ${task}`;
+      msg.expected = [`- [x] ${task}`];
+      msg.note = 'Every task in a change proposal must be marked as completed before the proposal is archived';
+      msg.file = file.path;
+      messages.push(msg);
+    }
+  );
+
+  console.log(vFileMessagesToFailVerdict(messages));
+}
 
 const rule: Rule<typeof RuleContextMap> = {
   id,
