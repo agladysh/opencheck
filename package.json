@@ -41,7 +41,8 @@
   "packageManager": "pnpm@10.18.2",
   "dependencies": {
     "@opencheck/cli": "workspace:*",
-    "@opencheck/lib": "workspace:*"
+    "@opencheck/lib": "workspace:*",
+    "@opencheck/plugin-openspec": "workspace:*"
   },
   "devDependencies": {
     "@eslint/js": "^9.34.0",
