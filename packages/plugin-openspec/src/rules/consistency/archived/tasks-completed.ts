@@ -12,6 +12,7 @@ import { visitParents } from 'unist-util-visit-parents';
 import { VFile } from 'vfile';
 import { VFileMessage } from 'vfile-message';
 import pkg from '../../../../package.json' with { type: 'json' };
+import { changeIdFromPath } from '../../../util/changeIdFromPath.ts';
 
 const id = RuleID('openspec/consistency/archived/tasks-completed');
 
@@ -24,10 +25,6 @@ type RuleContext = RuntimeContext<typeof RuleContextMap>;
 
 // TODO: Consider trying xo instead of raw eslint
 // TODO: Add exports/package.json linter
-
-function changeIdFromPath(path: string): string {
-  return (/archive\/\d\d\d\d-\d\d-\d\d-([^/]*?)\/.*$/.exec(path) ?? [])[1] ?? '(unknown)';
-}
 
 export async function delme(md: string) {
   console.log(md);
