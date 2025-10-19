@@ -4,6 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "exports": {
+    ".": "./src/index.ts",
     "./context/*": "./src/context/*",
     "./rules/*": "./src/rules/*"
   },

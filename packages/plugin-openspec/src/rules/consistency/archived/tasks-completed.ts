@@ -1,6 +1,6 @@
-import { FlagContext, ProjectFilesContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
+import { FlagContext, ProjectFilesContext, type ProjectFileContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
 import { ContextRef, RuleID, type Rule, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
-import type { SkipVerdict, Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
+import { PassVerdict, type SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 import { vFileMessagesToFailVerdict } from '@opencheck/lib/vFileMessagesToFailVerdict.ts';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import remarkGfm from 'remark-gfm';
@@ -26,11 +26,9 @@ type RuleContext = RuntimeContext<typeof RuleContextMap>;
 // TODO: Consider trying xo instead of raw eslint
 // TODO: Add exports/package.json linter
 
-export async function delme(md: string) {
-  console.log(md);
-
-  const file = new VFile(md);
-  file.path = 'archive/2025-10-18-my-change/tasks.md';
+async function checkTasksFile(fileContext: ProjectFileContext): Promise<VFileMessage[]> {
+  const file = new VFile(fileContext.value.value);
+  file.path = fileContext.value.entry.rpath;
 
   const tree = unified()
     .use(remarkParse)
@@ -67,7 +65,7 @@ export async function delme(md: string) {
     }
   );
 
-  console.log(vFileMessagesToFailVerdict(messages));
+  return messages;
 }
 
 const rule: Rule<typeof RuleContextMap> = {
@@ -86,9 +84,13 @@ const rule: Rule<typeof RuleContextMap> = {
     return true;
   },
 
-  async run(_context: RuleContext): Promise<Verdict> {
-    // TODO: Find unticked checkboxes
-    return { status: 'fail', message: 'ENOTIMPL' };
+  async run(context: RuleContext): Promise<Verdict> {
+    const messages = (await Promise.all(context.files.value.map((f) => checkTasksFile(f)))).flat();
+    if (messages.length === 0) {
+      return PassVerdict();
+    }
+
+    return vFileMessagesToFailVerdict(messages);
   },
 };
 
