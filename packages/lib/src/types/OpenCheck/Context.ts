@@ -1,3 +1,5 @@
+import type { FSEntryFile } from '../../FileSystem.ts';
+
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- Transparent utility type
 type MakeContext<Type extends string, Value> = {
   readonly type: Type;
@@ -12,13 +14,12 @@ const MakeContext = <T extends Context>(type: T['type']) =>
 export type FlagContext = MakeContext<'opencheck.flag', boolean>;
 export const FlagContext = MakeContext<FlagContext>('opencheck.flag');
 
-export type ProjectFilenamesContext = MakeContext<'opencheck.project.filenames', string[]>;
+export type ProjectFilenamesContext = MakeContext<'opencheck.project.filenames', FSEntryFile[]>;
 export const ProjectFilenamesContext = MakeContext<ProjectFilenamesContext>('opencheck.project.filenames');
 
-// TODO: Use VFile instead!
 export interface ProjectFile {
-  readonly rpath: string;
-  readonly value: string;
+  readonly entry: FSEntryFile;
+  readonly value: string; // TODO: Perhaps, VFile?
 }
 
 export type ProjectFileContext = MakeContext<'opencheck.project.file', ProjectFile>;

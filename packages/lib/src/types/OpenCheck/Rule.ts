@@ -20,13 +20,13 @@ export const ContextRef = <F extends ContextFactory>(
 
 export type ContextTypeFromRef<T> = T extends ContextRef<infer C> ? C : never;
 
-export type ContextMap = Record<PropertyKey, ContextRef>;
+export type ContextRefMap = Record<PropertyKey, ContextRef>;
 
-export type RuntimeContext<M extends ContextMap> = {
+export type RuntimeContext<M extends ContextRefMap> = {
   [k in keyof M]: ContextTypeFromRef<M[k]>;
 };
 
-export interface Rule<M extends ContextMap> {
+export interface Rule<M extends ContextRefMap> {
   readonly id: RuleID;
   readonly context: M;
 

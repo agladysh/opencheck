@@ -8,5 +8,6 @@ export const ContextID = make<ContextID>();
 export interface ContextProducer {
   readonly id: ContextID;
 
+  // Will be run at most once.
   run: (runtime: Runtime) => Promise<Context>;
 }

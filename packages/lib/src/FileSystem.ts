@@ -8,12 +8,12 @@ interface FSEntryBase {
   readonly type: 'file' | 'directory';
 }
 
-interface FSEntryDir extends FSEntryBase {
+export interface FSEntryDir extends FSEntryBase {
   readonly type: 'directory';
   readonly entries: FSEntry[];
 }
 
-interface FSEntryFile extends FSEntryBase {
+export interface FSEntryFile extends FSEntryBase {
   readonly type: 'file';
   readonly binary: boolean;
 }

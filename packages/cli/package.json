@@ -15,7 +15,9 @@
     "prepack": "tsc --emitDeclarationOnly"
   },
   "dependencies": {
-    "@opencheck/lib": "workspace:*"
+    "@opencheck/lib": "workspace:*",
+    "ignore": "^7.0.5",
+    "minimatch": "^10.0.3"
   },
   "devDependencies": {
     "@types/node": "^24.5.1",
