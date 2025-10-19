@@ -4,6 +4,7 @@ import { FileSystem } from '@opencheck/lib/FileSystem.ts';
 import { findProjectRootPath } from '@opencheck/lib/findProjectRootPath.ts';
 import {
   type Context,
+  ProjectDirnamesContext,
   ProjectFileContext,
   ProjectFilenamesContext,
   ProjectFilesContext,
@@ -40,8 +41,17 @@ class CliRuntime implements Runtime {
 
     const matchers = pattern.map((p) => minimatch.filter(p));
 
-    // TODO: Ideally context would be of whatever fs data is.
     return ProjectFilenamesContext(this.fs.files.filter((f) => matchers.some((m) => m(f.rpath))));
+  }
+
+  async matchProjectDirnames(pattern: string | string[]): Promise<ProjectDirnamesContext> {
+    if (!Array.isArray(pattern)) {
+      pattern = [pattern];
+    }
+
+    const matchers = pattern.map((p) => minimatch.filter(p));
+
+    return ProjectDirnamesContext(this.fs.dirs.filter((f) => matchers.some((m) => m(f.rpath))));
   }
 
   async readMatchingProjectFiles(pattern: string | string[]): Promise<ProjectFilesContext> {
@@ -124,6 +134,7 @@ class ContextCache {
   }
 }
 
+// TODO: Verify no duplicate IDs in contexts and rules.
 async function main(): Promise<void> {
   const fs = setupFS(process.cwd());
   const cache = new ContextCache(contexts);

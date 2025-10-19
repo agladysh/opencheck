@@ -1,6 +1,6 @@
 import { FlagContext, ProjectFilesContext, type ProjectFileContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
 import { ContextRef, RuleID, type Rule, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
-import { FailVerdict, PassVerdict, type SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
+import { FailVerdict, PassVerdict, SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMessageControl from 'remark-message-control';
@@ -68,11 +68,11 @@ const rule: Rule<typeof RuleContextMap> = {
 
   async when(context: RuleContext): Promise<true | SkipVerdict> {
     if (!context.applicable.value) {
-      return { status: 'skip', message: 'rule is not applicable to the project' };
+      return SkipVerdict('rule is not applicable to the project');
     }
 
     if (context.files.value.length === 0) {
-      return { status: 'skip', message: 'no archived tasks found' };
+      return SkipVerdict('no archived tasks found');
     }
 
     return true;

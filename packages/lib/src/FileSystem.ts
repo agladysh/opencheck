@@ -26,7 +26,8 @@ export type Walker<T, R> = (state: T, entry: FSEntry, isLast: boolean) => R;
 export class FileSystem {
   public readonly projectRootPath: string;
   public readonly root: FSEntryDir;
-  public readonly files: FSEntryFile[] = []; // TODO: Remove if unused.
+  public readonly files: FSEntryFile[] = [];
+  public readonly dirs: FSEntryDir[] = [];
 
   constructor(projectRootPath: string, ignorer: Filter) {
     this.projectRootPath = projectRootPath;
@@ -34,9 +35,12 @@ export class FileSystem {
       path: this.projectRootPath,
       rpath: './',
       type: 'directory',
-      entries: this.scan(this.projectRootPath, ignorer), // Fills this.files as a side-effect.
+      entries: this.scan(this.projectRootPath, ignorer), // Fills this.files and this.dirs as a side-effect.
     };
-    this.files.sort((a, b) => a.rpath.localeCompare(b.rpath));
+    this.dirs.push(this.root);
+    const sorter = (a: FSEntry, b: FSEntry) => a.rpath.localeCompare(b.rpath);
+    this.dirs.sort(sorter);
+    this.files.sort(sorter);
   }
 
   readFile(entry: FSEntryFile): string {
@@ -95,12 +99,14 @@ export class FileSystem {
 
       // TODO: Make sure symlinks are handled properly with this logic.
       if (entry.isDirectory()) {
-        result.push({
+        const dir = {
           path,
           rpath,
           type: 'directory',
           entries: this.scan(path, ignorer),
-        } satisfies FSEntryDir);
+        } satisfies FSEntryDir;
+        result.push(dir);
+        this.dirs.push(dir);
         continue;
       }
 
