@@ -30,6 +30,6 @@ export interface Rule<M extends ContextRefMap> {
   readonly id: RuleID;
   readonly context: M;
 
-  when: (context: RuntimeContext<M>, runtime: Runtime) => Promise<true | SkipVerdict>;
-  run: (context: RuntimeContext<M>, runtime: Runtime) => Promise<Verdict>;
+  when(context: RuntimeContext<M>, runtime: Runtime): Promise<true | SkipVerdict>;
+  run(context: RuntimeContext<M>, runtime: Runtime): Promise<Verdict>;
 }

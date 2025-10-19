@@ -9,5 +9,5 @@ export interface ContextProducer {
   readonly id: ContextID;
 
   // Will be run at most once.
-  run: (runtime: Runtime) => Promise<Context>;
+  run(runtime: Runtime): Promise<Context>;
 }

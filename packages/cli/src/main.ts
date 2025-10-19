@@ -14,6 +14,7 @@ import type {
   ContextRef,
   ContextRefMap,
   ContextTypeFromRef,
+  Rule,
   RuleID,
   RuntimeContext,
 } from '@opencheck/lib/types/OpenCheck/Rule.ts';
@@ -144,7 +145,9 @@ async function main(): Promise<void> {
 
   process.stdout.write(`${chalk.green.bold(`OpenCheck`)} ${chalk.gray(`${pkg.name} ${pkg.version}`)}\n`);
 
-  for (const rule of rules) {
+  const runtimeRules = rules as readonly Rule<ContextRefMap>[];
+
+  for (const rule of runtimeRules) {
     const context = await runtime.resolveContextMap(rule.context);
     const when = await rule.when(context, runtime);
     if (when !== true) {
