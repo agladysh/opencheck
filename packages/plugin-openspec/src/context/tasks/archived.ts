@@ -7,7 +7,7 @@ const contextProducer: ContextProducer = {
   id: ContextID('openspec/tasks/archived'),
 
   async run(runtime: Runtime): Promise<ProjectFilesContext> {
-    return runtime.readMatchingProjectFiles('openspec/changes/archived/**/tasks.md');
+    return runtime.readMatchingProjectFiles('openspec/changes/archive/**/tasks.md');
   },
 };
 
