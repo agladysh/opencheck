@@ -66,6 +66,9 @@ importers:
       '@opencheck/lib':
         specifier: workspace:*
         version: link:../lib
+      chalk:
+        specifier: ^5.6.2
+        version: 5.6.2
       ignore:
         specifier: ^7.0.5
         version: 7.0.5

@@ -21,6 +21,8 @@ import { contexts, rules } from '@opencheck/plugin-openspec'; // TODO: Use IPS
 import ignore from 'ignore';
 import { minimatch } from 'minimatch';
 import type { Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
+import pkg from '../package.json' with { type: 'json' };
+import chalk from 'chalk';
 
 class CliRuntime implements Runtime {
   private readonly fs: FileSystem;
@@ -129,6 +131,8 @@ async function main(): Promise<void> {
 
   const verdicts: [RuleID, Verdict][] = [];
 
+  process.stdout.write(`${chalk.green.bold(`OpenCheck`)} ${chalk.gray(`${pkg.name} ${pkg.version}`)}\n`);
+
   for (const rule of rules) {
     const context = await runtime.resolveContextMap(rule.context);
     const when = await rule.when(context, runtime);
@@ -139,11 +143,17 @@ async function main(): Promise<void> {
     verdicts.push([rule.id, await rule.run(context, runtime)]);
   }
 
-  console.error(verdicts);
+  for (const [ruleId, verdict] of verdicts) {
+    const color = verdict.status === 'skip' ? chalk.gray : chalk.redBright;
+    process.stdout.write(`\n${color(verdict.status)}\t${ruleId}\n\n`);
+    if ('message' in verdict) {
+      process.stdout.write(`${verdict.message}\n`);
+    }
+  }
 
   const fails = verdicts.filter(([, v]) => v.status === 'fail');
   if (fails.length > 0) {
-    console.error(`found ${fails.length} fails`);
+    console.error(`\nFound ${fails.length} fail(s)`);
     process.exitCode = 1;
   }
 }

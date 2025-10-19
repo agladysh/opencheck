@@ -1,7 +1,6 @@
 import { FlagContext, ProjectFilesContext, type ProjectFileContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
 import { ContextRef, RuleID, type Rule, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
-import { PassVerdict, type SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
-import { vFileMessagesToFailVerdict } from '@opencheck/lib/vFileMessagesToFailVerdict.ts';
+import { FailVerdict, PassVerdict, type SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMessageControl from 'remark-message-control';
@@ -12,7 +11,6 @@ import { visitParents } from 'unist-util-visit-parents';
 import { VFile } from 'vfile';
 import { VFileMessage } from 'vfile-message';
 import pkg from '../../../../package.json' with { type: 'json' };
-import { changeIdFromPath } from '../../../util/changeIdFromPath.ts';
 
 const id = RuleID('openspec/consistency/archived/tasks-completed');
 
@@ -45,21 +43,17 @@ async function checkTasksFile(fileContext: ProjectFileContext): Promise<VFileMes
       checked: false,
     },
     (node: Parent, parents) => {
-      console.log(node);
       const task = toMarkdown(node.children[0] as Parameters<typeof toMarkdown>[0]).trim();
-      const msg = new VFileMessage(
-        `Change "${changeIdFromPath(file.path)}" was archived with incomplete task "${task}"`,
-        {
-          ancestors: [...parents, node],
-          ruleId: id,
-          source: pkg.name,
-          // url: TODO
-        }
-      );
+      const msg = new VFileMessage(`Task "${task}" must be completed`, {
+        ancestors: [...parents, node],
+        ruleId: id,
+        source: pkg.name,
+        // url: TODO
+      });
       msg.fatal = true;
       msg.actual = `- [ ] ${task}`;
       msg.expected = [`- [x] ${task}`];
-      msg.note = 'Every task in a change proposal must be marked as completed before the proposal is archived';
+      msg.note = 'Archived change may not have incomplete tasks';
       msg.file = file.path;
       messages.push(msg);
     }
@@ -90,7 +84,19 @@ const rule: Rule<typeof RuleContextMap> = {
       return PassVerdict();
     }
 
-    return vFileMessagesToFailVerdict(messages);
+    const result: string[] = [];
+
+    let lastFile = '';
+    for (const message of messages) {
+      if (lastFile !== message.file) {
+        result.push(`\n${message.file}: ${message.note}\n\n`);
+        lastFile = String(message.file);
+      }
+
+      result.push(`\t${message.line}:${message.column}\t${String(message.message)}\n`);
+    }
+
+    return FailVerdict(result.join('').trim());
   },
 };
 
