@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path/posix';
 
+// TODO: use simple-git for this detection.
 export function hasGit(path: string): boolean {
   return existsSync(join(path, '.git'));
 }

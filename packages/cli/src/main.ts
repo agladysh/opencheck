@@ -25,13 +25,17 @@ import { minimatch } from 'minimatch';
 import type { Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 import pkg from '../package.json' with { type: 'json' };
 import chalk from 'chalk';
+import { simpleGit, type SimpleGit } from 'simple-git';
 
 class CliRuntime implements Runtime {
   private readonly fs: FileSystem;
   private readonly cache: ContextCache;
 
+  readonly git: SimpleGit;
+
   constructor(fs: FileSystem, contextCache: ContextCache) {
     this.fs = fs;
+    this.git = simpleGit(fs.projectRootPath);
     this.cache = contextCache;
   }
 
