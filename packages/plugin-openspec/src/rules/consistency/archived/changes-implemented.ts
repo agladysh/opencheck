@@ -15,11 +15,59 @@ const RuleContextMap = {
 
 type RuleContext = RuntimeContext<typeof RuleContextMap>;
 
-async function checkArchivedChange(
-  _context: RuleContext,
-  _change: ProjectFilesContext,
-  _runtime: Runtime
-): Promise<Verdict> {
+async function checkArchivedChange(_context: RuleContext, changeDir: FSEntryDir, runtime: Runtime): Promise<Verdict> {
+  // We need to determine if an archived change was actually implemented in the code
+  // Given that full specs must include whatever is currently relevant of the change,
+  // we should do "does code really implement the spec" validation separately.
+  // Here we check formally, if the implementation attempt happened.
+  // For this, we need:
+  // - Archived change set documents (sits nicely in a directory)
+  // - The implementation (see below)
+  // To know what is this about:
+  // - Project description
+  // - Full set of specs
+  // To avoid the case when the description and or specs are much newer than the older change
+  // in scenario (C) below, and confusing the LLM, we get description and specs from Git
+  // at the time of change archival at the TO point below.
+  // Now, we should handle at least three scenarios:
+  // - (A) change archival was not committed yet
+  //       and the implementation is not committed yet either
+  //       (performing change archival after the change was comitted seems a good idea,
+  //       so this scenario might become a violation later)
+  // - (B) change archival is not comitted yet, but the implementation was committed
+  //       this is a well-formed scenario, in which this rule gates comitting the archival
+  // - (C) change archival and the change were comitted a while ago
+  //       this is a full retrospective audit scenario, later we might want not to verify this by default
+  // We're working with git state between two points:
+  // - FROM: change was created (we trace through git renames)
+  //         edge cases:
+  //         (1) change was rewritten upon archival so much that git rename cannot track
+  //         this is clearly pathological with automated archival, so we do not handle it
+  //         in the future we might want to fallback through change id
+  //         (2) change was created, implemented and archived without being comitted to git pre-archival
+  //         (this seems to be a bad form, we might want to fail on this in the future in a separate rule)
+  //         in this case we cannot determine the FROM point, and choose to fail,
+  //         as examining the full working copy is expensive and / or error-prone (and should be done in the full spec audit)
+  //         later implementations might examine commit log with LLM to determine the range
+  // - TO:   change was archived
+  //         edge cases:
+  //         (1) change archival is not committed yet, we treat the entire working copy dirty state (new files,
+  //         not staged modifications, staged modifications) as a "commit"
+  //         (2) same as FROM edge cases, where we fail
+  // We feed to the LLM as the implementation context:
+  // - (1) git log --name-status between FROM/TO
+  // - (2) git diff between FROM/TO
+
+  // TODO: The above means that the contexts that come from the rule are not very useful,
+  //       as we need the files from unknown commits.
+  //       For now we should clean up the contexts and fetch manually,
+  //       Later, ideally, we provide some nice abstractions for context trees in the opencheck.
+
+  const files = await runtime.readMatchingProjectFiles(changeDir.rpath + '/**/*.md');
+  if (files.value.length === 0) {
+    return FailVerdict('change directory is empty');
+  }
+
   return FailVerdict('ENOTIMPL');
 }
 
@@ -49,13 +97,7 @@ const rule: Rule<typeof RuleContextMap> = {
     const verdicts: [FSEntryDir, Verdict][] = [];
 
     for (const changeDir of context.changes.value) {
-      const files = await runtime.readMatchingProjectFiles(changeDir.rpath + '/**/*.md');
-      if (files.value.length === 0) {
-        verdicts.push([changeDir, FailVerdict('change directory is empty')]);
-        continue;
-      }
-
-      const verdict = await checkArchivedChange(context, files, runtime);
+      const verdict = await checkArchivedChange(context, changeDir, runtime);
 
       verdicts.push([changeDir, verdict]);
     }
