@@ -57,14 +57,20 @@ async function checkArchivedChange(_context: RuleContext, changeDir: FSEntryDir,
   // We feed to the LLM as the implementation context:
   // - (1) git log --name-status between FROM/TO
   // - (2) git diff between FROM/TO
+  // NB: Another edge case to consider is when archival files are modified in the working copy.
+  //     So far it seems it should not affect much.
+  // In an ideal world, archive is read-only. Changes are permitted, but substantial changes should be a bad form.
+  // In the future we might have a rule prohibiting commits (and working copy modifications)
+  // making substantial changes to archived change proposal: new proposals should be created instead.
 
-  // TODO: The above means that the contexts that come from the rule are not very useful,
+  // TODO: The above means that most of the contexts that come from the rule are not very useful,
   //       as we need the files from unknown commits.
   //       For now we should clean up the contexts and fetch manually,
   //       Later, ideally, we provide some nice abstractions for context trees in the opencheck.
 
-  const files = await runtime.readMatchingProjectFiles(changeDir.rpath + '/**/*.md');
-  if (files.value.length === 0) {
+  // We use change files from the working copy as is
+  const changeFiles = await runtime.readMatchingProjectFiles(changeDir.rpath + '/**/*.md');
+  if (changeFiles.value.length === 0) {
     return FailVerdict('change directory is empty');
   }
 
