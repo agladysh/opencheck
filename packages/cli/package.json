@@ -17,6 +17,7 @@
   "dependencies": {
     "@opencheck/lib": "workspace:*",
     "chalk": "^5.6.2",
+    "execa": "^9.6.0",
     "ignore": "^7.0.5",
     "minimatch": "^10.0.3",
     "simple-git": "^3.28.0"

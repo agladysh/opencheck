@@ -3,6 +3,7 @@ import { ContextRef, RuleID, type Rule, type RuntimeContext } from '@opencheck/l
 import { FailVerdict, PassVerdict, SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 import type { Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
 import type { FSEntryDir } from '@opencheck/lib/FileSystem.ts';
+import { join } from 'path';
 
 const id = RuleID('openspec/consistency/archived/changes-implemented');
 
@@ -68,11 +69,51 @@ async function checkArchivedChange(_context: RuleContext, changeDir: FSEntryDir,
   //       For now we should clean up the contexts and fetch manually,
   //       Later, ideally, we provide some nice abstractions for context trees in the opencheck.
 
-  // We use change files from the working copy as is
+  // We use change file texts from the working copy HEAD as is
   const changeFiles = await runtime.readMatchingProjectFiles(changeDir.rpath + '/**/*.md');
   if (changeFiles.value.length === 0) {
     return FailVerdict('change directory is empty');
   }
+
+  // Since git works only with the files, we pick proposal.md as our representative file.
+  // Note tasks.md is in danger of being "rewritten" on archival if all task boxes are ticked at once.
+  const proposalFilePath = join(changeDir.rpath, 'proposal.md'); // TODO: Verify the file is there.
+  console.log('XXX proposalFilePath', proposalFilePath);
+
+  // 1. identify WHEN folder was renamed (last rename), use clean HEAD if rename is not committed
+  // 2. identify WHEN folder was created (first commit), using original name (match by change id?)
+  // 3. log from 2 to 1
+  // 4. diff from 2 to 1, use dirty HEAD if rename is not committed
+
+  const headCommit = await runtime.gitHead();
+  console.log('XXX headCommit', headCommit);
+
+  const archiveCommitted = await runtime.isFileTrackedInGit(proposalFilePath);
+  console.log('XXX archiveCommitted', archiveCommitted);
+
+  const archiveCommit = !archiveCommitted
+    ? headCommit
+    : await runtime.getFirstCommitWithoutRenames(proposalFilePath, headCommit);
+  console.log('XXX archiveCommit', archiveCommit);
+
+  const createCommit = await runtime.getFirstCommitWithRenames(proposalFilePath, headCommit);
+  console.log('XXX createCommit', createCommit);
+
+  const log =
+    createCommit === archiveCommit
+      ? await runtime.gitLogNameStatusSingle(archiveCommit) // Change created archived. TODO: should be a warning or worse
+      : await runtime.gitLogNameStatus(`${createCommit}~`, archiveCommit); // We need to include createCommit, thus ~.
+  console.log('XXX log', log);
+
+  // TODO: Handle the case where all we need is git show for dirty head
+  const lastCommit = archiveCommitted ? archiveCommit : await runtime.gitDirtyHead();
+  console.log('XXX lastCommit', lastCommit);
+
+  const diff =
+    createCommit === lastCommit
+      ? await runtime.git.show([lastCommit])
+      : await runtime.git.diff(['--minimal', `${createCommit}~..${lastCommit}`]); // We need to include createCommit, thus ~.
+  console.log('XXX diff', diff);
 
   return FailVerdict('ENOTIMPL');
 }

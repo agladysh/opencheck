@@ -2,79 +2,14 @@
 
 import { FileSystem } from '@opencheck/lib/FileSystem.ts';
 import { findProjectRootPath } from '@opencheck/lib/findProjectRootPath.ts';
-import {
-  type Context,
-  ProjectDirnamesContext,
-  ProjectFileContext,
-  ProjectFilenamesContext,
-  ProjectFilesContext,
-} from '@opencheck/lib/types/OpenCheck/Context.ts';
-import { ContextID, type ContextProducer } from '@opencheck/lib/types/OpenCheck/ContextProducer.ts';
-import type {
-  ContextRef,
-  ContextRefMap,
-  ContextTypeFromRef,
-  Rule,
-  RuleID,
-  RuntimeContext,
-} from '@opencheck/lib/types/OpenCheck/Rule.ts';
-import type { Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
-import { contexts, rules } from '@opencheck/plugin-openspec'; // TODO: Use IPS
-import ignore from 'ignore';
-import { minimatch } from 'minimatch';
+import type { ContextRefMap, Rule, RuleID } from '@opencheck/lib/types/OpenCheck/Rule.ts';
 import type { Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
-import pkg from '../package.json' with { type: 'json' };
+import { contexts, rules } from '@opencheck/plugin-openspec'; // TODO: Use IPS
 import chalk from 'chalk';
-import { simpleGit, type SimpleGit } from 'simple-git';
-
-class CliRuntime implements Runtime {
-  private readonly fs: FileSystem;
-  private readonly cache: ContextCache;
-
-  readonly git: SimpleGit;
-
-  constructor(fs: FileSystem, contextCache: ContextCache) {
-    this.fs = fs;
-    this.git = simpleGit(fs.projectRootPath);
-    this.cache = contextCache;
-  }
-
-  async matchProjectFilenames(pattern: string | string[]): Promise<ProjectFilenamesContext> {
-    if (!Array.isArray(pattern)) {
-      pattern = [pattern];
-    }
-
-    const matchers = pattern.map((p) => minimatch.filter(p));
-
-    return ProjectFilenamesContext(this.fs.files.filter((f) => matchers.some((m) => m(f.rpath))));
-  }
-
-  async matchProjectDirnames(pattern: string | string[]): Promise<ProjectDirnamesContext> {
-    if (!Array.isArray(pattern)) {
-      pattern = [pattern];
-    }
-
-    const matchers = pattern.map((p) => minimatch.filter(p));
-
-    return ProjectDirnamesContext(this.fs.dirs.filter((f) => matchers.some((m) => m(f.rpath))));
-  }
-
-  async readMatchingProjectFiles(pattern: string | string[]): Promise<ProjectFilesContext> {
-    const filenames = await this.matchProjectFilenames(pattern);
-
-    return ProjectFilesContext(
-      filenames.value.map((f) => ProjectFileContext({ entry: f, value: this.fs.readFile(f) }))
-    );
-  }
-
-  async resolveContextMap<M extends ContextRefMap>(map: M): Promise<RuntimeContext<M>> {
-    return Object.fromEntries(
-      await Promise.all(
-        Object.entries(map).map(async ([key, ref]) => [key, await this.cache.resolve(this, ref)] as const)
-      )
-    ) as RuntimeContext<M>;
-  }
-}
+import ignore from 'ignore';
+import pkg from '../package.json' with { type: 'json' };
+import { CliRuntime } from './CliRuntime.ts';
+import { ContextCache } from './ContextCache.ts';
 
 function setupFS(cwdPath: string): FileSystem {
   const projectRootPath = findProjectRootPath(cwdPath);
@@ -89,54 +24,6 @@ node_modules/
   ignorer.add(alwaysIgnore);
 
   return new FileSystem(projectRootPath, (path: string) => ignorer.ignores(path));
-}
-
-// function setupDefaultOmitter(fs: FileSystem): ignore.Ignore {
-//   const alwaysOmit = `
-// .env
-//   `.trim();
-
-//   const defaultOmitter = ignore();
-//   defaultOmitter.add(alwaysOmit);
-//   defaultOmitter.add(readGitIgnore(fs.projectRootPath));
-
-//   return defaultOmitter;
-// }
-
-class ContextCache {
-  private readonly producers: Record<ContextID, ContextProducer> = {};
-  private readonly cache: Record<ContextID, Context> = {};
-
-  constructor(producers: Readonly<ContextProducer[]>) {
-    this.producers = Object.fromEntries(producers.map((p) => [p.id, p]));
-  }
-
-  async resolve<T extends ContextRef>(runtime: Runtime, ref: T): Promise<ContextTypeFromRef<T>> {
-    const id = ContextID(ref.id);
-    const cached = this.cache[id];
-    if (cached) {
-      return this.check(ref, cached);
-    }
-
-    const producer = this.producers[id];
-    if (!producer) {
-      throw new Error(`Unknown ${ref.type} context id ${id}`);
-    }
-
-    const result = this.check(ref, await producer.run(runtime));
-    this.cache[id] = result;
-    return result;
-  }
-
-  private check<T extends ContextRef>(ref: T, context: Context): ContextTypeFromRef<T> {
-    if (!context) {
-      throw new Error(`bad implementation: ${ref.type} context for ${ref.id} is falsy`);
-    }
-    if (context.type !== ref.type) {
-      throw new Error(`unexpected context "${ref.id}" type: got "${context.type}", expected "${ref.type}"`);
-    }
-    return context as ContextTypeFromRef<T>;
-  }
 }
 
 // TODO: Verify no duplicate IDs in contexts and rules.

@@ -69,6 +69,9 @@ importers:
       chalk:
         specifier: ^5.6.2
         version: 5.6.2
+      execa:
+        specifier: ^9.6.0
+        version: 9.6.0
       ignore:
         specifier: ^7.0.5
         version: 7.0.5
@@ -140,6 +143,9 @@ importers:
       remark-stringify:
         specifier: ^11.0.0
         version: 11.0.0
+      simple-git:
+        specifier: ^3.28.0
+        version: 3.28.0
       unified:
         specifier: ^11.0.5
         version: 11.0.5
