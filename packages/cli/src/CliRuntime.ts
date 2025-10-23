@@ -9,12 +9,20 @@ import {
   ProjectFileContext,
 } from '@opencheck/lib/types/OpenCheck/Context.ts';
 import type { ContextRefMap, RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
-import { GitObjectName, type Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
+import {
+  type AISelectOptions,
+  type AISelectOptionType,
+  type AISelectRequest,
+  GitObjectName,
+  type OneOf,
+  type Runtime,
+} from '@opencheck/lib/types/OpenCheck/Runtime.ts';
 import { join } from 'path/posix';
 import { simpleGit, type SimpleGit } from 'simple-git';
 import type { ContextCache } from './ContextCache.ts';
 import { copyFile } from 'fs/promises';
 import { $ } from 'execa';
+import { aiSelectGemini } from './aiSelect/Gemini.ts';
 
 async function withTmpDir<T>(prefix: string, fn: (dir: string) => Promise<T>): Promise<T> {
   const tmpDir = await mkdtemp(join(tmpdir(), prefix));
@@ -135,5 +143,11 @@ export class CliRuntime implements Runtime {
         Object.entries(map).map(async ([key, ref]) => [key, await this.cache.resolve(this, ref)] as const)
       )
     ) as RuntimeContext<M>;
+  }
+
+  async aiSelect<T extends AISelectOptions>(request: AISelectRequest<T>): Promise<AISelectOptionType<OneOf<T>>> {
+    // TODO: Support provider selection, and let user opt-in into rotating free models (e.g. Gemini + OpenRouter) in parallel
+    // TODO: Support observability!
+    return await aiSelectGemini(request);
   }
 }
