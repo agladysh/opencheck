@@ -143,6 +143,9 @@ importers:
       '@opencheck/lib':
         specifier: workspace:*
         version: link:../lib
+      iter-ops:
+        specifier: ^3.5.0
+        version: 3.5.0
       mdast-util-to-markdown:
         specifier: ^2.1.2
         version: 2.1.2
@@ -1382,6 +1385,10 @@ packages:
   istextorbinary@9.5.0:
     resolution: {integrity: sha512-5mbUj3SiZXCuRf9fT3ibzbSSEWiy63gFfksmGfdOzujPjW3k+z8WvIBxcJHBoQNlaZaiyB25deviif2+osLmLw==}
     engines: {node: '>=4'}
+
+  iter-ops@3.5.0:
+    resolution: {integrity: sha512-0/DU67w30nLAyyYETTAVOwtts871N6jjQEY9NAzSXqtlAGuo8CX6O+/Hx11eRZIchACaAMUn6alEndINx27j/Q==}
+    engines: {node: '>=18'}
 
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
@@ -3798,6 +3805,8 @@ snapshots:
       binaryextensions: 6.11.0
       editions: 6.22.0
       textextensions: 6.11.0
+
+  iter-ops@3.5.0: {}
 
   jackspeak@3.4.3:
     dependencies:

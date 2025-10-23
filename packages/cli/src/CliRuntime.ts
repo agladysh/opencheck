@@ -1,28 +1,23 @@
-import { mkdtemp, rm } from 'fs/promises';
-import { minimatch } from 'minimatch';
-import { tmpdir } from 'os';
-import type { FileSystem } from '@opencheck/lib/FileSystem.ts';
-import {
-  ProjectFilenamesContext,
-  ProjectDirnamesContext,
-  ProjectFilesContext,
-  ProjectFileContext,
-} from '@opencheck/lib/types/OpenCheck/Context.ts';
-import type { ContextRefMap, RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
+import type { FileSystem, FSEntryDir, FSEntryFile } from '@opencheck/lib/FileSystem.ts';
+import { type OneOf } from '@opencheck/lib/types/OneOf.ts';
+import type { ContextProducer, ContextProducerResult } from '@opencheck/lib/types/OpenCheck/ContextProducer.ts';
+import type { IsContextProducerMap, RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
 import {
   type AISelectOptions,
   type AISelectOptionType,
   type AISelectRequest,
   GitObjectName,
-  type OneOf,
+  type ProjectFile,
   type Runtime,
 } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
+import { $ } from 'execa';
+import { copyFile, mkdtemp, rm } from 'fs/promises';
+import { minimatch } from 'minimatch';
+import { tmpdir } from 'os';
 import { join } from 'path/posix';
 import { simpleGit, type SimpleGit } from 'simple-git';
-import type { ContextCache } from './ContextCache.ts';
-import { copyFile } from 'fs/promises';
-import { $ } from 'execa';
 import { aiSelectGemini } from './aiSelect/Gemini.ts';
+import type { ContextCache } from './ContextCache.ts';
 
 async function withTmpDir<T>(prefix: string, fn: (dir: string) => Promise<T>): Promise<T> {
   const tmpDir = await mkdtemp(join(tmpdir(), prefix));
@@ -60,7 +55,7 @@ export class CliRuntime implements Runtime {
   }
 
   async gitLogNameStatus(from: string, to: string): Promise<string> {
-    return (await this.$`git log --name-status ${from}..${to}`).stdout;
+    return (await this.$`git log --name-status ${from}~..${to}`).stdout; // We include from in the range
   }
 
   // TODO: This is probably a git show call with options
@@ -109,40 +104,47 @@ export class CliRuntime implements Runtime {
     });
   }
 
-  async matchProjectFilenames(pattern: string | string[]): Promise<ProjectFilenamesContext> {
+  async matchProjectFilenames(pattern: string | string[]): Promise<FSEntryFile[]> {
     if (!Array.isArray(pattern)) {
       pattern = [pattern];
     }
 
     const matchers = pattern.map((p) => minimatch.filter(p));
 
-    return ProjectFilenamesContext(this.fs.files.filter((f) => matchers.some((m) => m(f.rpath))));
+    return this.fs.files.filter((f) => matchers.some((m) => m(f.rpath)));
   }
 
-  async matchProjectDirnames(pattern: string | string[]): Promise<ProjectDirnamesContext> {
+  async matchProjectDirnames(pattern: string | string[]): Promise<FSEntryDir[]> {
     if (!Array.isArray(pattern)) {
       pattern = [pattern];
     }
 
     const matchers = pattern.map((p) => minimatch.filter(p));
 
-    return ProjectDirnamesContext(this.fs.dirs.filter((f) => matchers.some((m) => m(f.rpath))));
+    return this.fs.dirs.filter((f) => matchers.some((m) => m(f.rpath)));
   }
 
-  async readMatchingProjectFiles(pattern: string | string[]): Promise<ProjectFilesContext> {
+  async readMatchingProjectFiles(pattern: string | string[]): Promise<ProjectFile[]> {
     const filenames = await this.matchProjectFilenames(pattern);
-
-    return ProjectFilesContext(
-      filenames.value.map((f) => ProjectFileContext({ entry: f, value: this.fs.readFile(f) }))
-    );
+    return filenames.map((f) => ({ entry: f, value: this.fs.readFile(f) }));
   }
 
-  async resolveContextMap<M extends ContextRefMap>(map: M): Promise<RuntimeContext<M>> {
+  async readFile(entry: FSEntryFile): Promise<ProjectFile> {
+    return { entry, value: this.fs.readFile(entry) };
+  }
+
+  async resolveContextMap<M>(map: IsContextProducerMap<M>): Promise<RuntimeContext<M>> {
     return Object.fromEntries(
       await Promise.all(
-        Object.entries(map).map(async ([key, ref]) => [key, await this.cache.resolve(this, ref)] as const)
+        Object.entries(map).map(
+          async ([key, producer]) => [key, await this.runContextProducer(producer as ContextProducer)] as const
+        )
       )
     ) as RuntimeContext<M>;
+  }
+
+  async runContextProducer<P extends ContextProducer>(producer: P): Promise<ContextProducerResult<P>> {
+    return await this.cache.resolve(this, producer);
   }
 
   async aiSelect<T extends AISelectOptions>(request: AISelectRequest<T>): Promise<AISelectOptionType<OneOf<T>>> {

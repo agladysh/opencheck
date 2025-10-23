@@ -8,12 +8,8 @@ import {
 } from '@google/genai';
 import { ArkErrors } from 'arktype';
 import { setTimeout } from 'node:timers/promises';
-import type {
-  AISelectOptions,
-  AISelectOptionType,
-  AISelectRequest,
-  OneOf,
-} from 'packages/lib/src/types/OpenCheck/Runtime.ts';
+import type { AISelectOptions, AISelectOptionType, AISelectRequest } from 'packages/lib/src/types/OpenCheck/Runtime.ts';
+import type { OneOf } from '@opencheck/lib/types/OneOf.js';
 import { type Brand, make } from 'ts-brand';
 
 interface AIRequestFunctions {

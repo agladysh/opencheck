@@ -1,5 +1,5 @@
-import { FlagContext, ProjectFilesContext, type ProjectFileContext } from '@opencheck/lib/types/OpenCheck/Context.ts';
-import { ContextRef, RuleID, type Rule, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
+import { Rule, RuleID, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
+import type { ProjectFile } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
 import { FailVerdict, PassVerdict, SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 import { toMarkdown } from 'mdast-util-to-markdown';
 import remarkGfm from 'remark-gfm';
@@ -12,21 +12,21 @@ import { VFile } from 'vfile';
 import { VFileMessage } from 'vfile-message';
 import pkg from '../../../../package.json' with { type: 'json' };
 
+import archivedChanges from '@opencheck/plugin-openspec/context/changes/archived.ts';
+import hasOpenspecDir from '@opencheck/plugin-openspec/context/has-openspec-dir.ts';
+
 const id = RuleID('openspec/consistency/archived/tasks-completed');
 
-const RuleContextMap = {
-  applicable: ContextRef(FlagContext, 'openspec/has-openspec-dir'),
-  files: ContextRef(ProjectFilesContext, 'openspec/tasks/archived'),
+const context = {
+  hasOpenspecDir,
+  archivedChanges,
 } as const;
 
-type RuleContext = RuntimeContext<typeof RuleContextMap>;
+type Context = RuntimeContext<typeof context>;
 
-// TODO: Consider trying xo instead of raw eslint
-// TODO: Add exports/package.json linter
-
-async function checkTasksFile(fileContext: ProjectFileContext): Promise<VFileMessage[]> {
-  const file = new VFile(fileContext.value.value);
-  file.path = fileContext.value.entry.rpath;
+async function checkTasksFile(fileContext: ProjectFile): Promise<VFileMessage[]> {
+  const file = new VFile(fileContext.value);
+  file.path = fileContext.entry.rpath;
 
   const tree = unified()
     .use(remarkParse)
@@ -62,42 +62,44 @@ async function checkTasksFile(fileContext: ProjectFileContext): Promise<VFileMes
   return messages;
 }
 
-const rule: Rule<typeof RuleContextMap> = {
-  id,
-  context: RuleContextMap,
+async function when(context: Context): Promise<true | SkipVerdict> {
+  if (!context.hasOpenspecDir) {
+    return SkipVerdict('rule is not applicable to the project');
+  }
 
-  async when(context: RuleContext): Promise<true | SkipVerdict> {
-    if (!context.applicable.value) {
-      return SkipVerdict('rule is not applicable to the project');
+  if (context.archivedChanges.length === 0) {
+    return SkipVerdict('no archived changes found');
+  }
+
+  return true;
+}
+
+function formatMessages(messages: VFileMessage[]) {
+  const result: string[] = [];
+
+  let lastFile = '';
+  for (const message of messages) {
+    if (lastFile !== message.file) {
+      result.push(`\n${message.file}: ${message.note}\n\n`);
+      lastFile = String(message.file);
     }
 
-    if (context.files.value.length === 0) {
-      return SkipVerdict('no archived tasks found');
-    }
+    result.push(`\t${message.line}:${message.column}\t${String(message.message)}\n`);
+  }
 
-    return true;
-  },
+  return result.join('').trim();
+}
 
-  async run(context: RuleContext): Promise<Verdict> {
-    const messages = (await Promise.all(context.files.value.map((f) => checkTasksFile(f)))).flat();
-    if (messages.length === 0) {
-      return PassVerdict();
-    }
+async function run(context: Context): Promise<Verdict> {
+  const messages = (
+    await Promise.all(
+      context.archivedChanges.map(async (f) =>
+        f.tasks ? await checkTasksFile(f.tasks) : new VFileMessage(`no tasks.md file found for archived change ${f.id}`)
+      )
+    )
+  ).flat();
 
-    const result: string[] = [];
+  return messages.length === 0 ? PassVerdict() : FailVerdict(formatMessages(messages));
+}
 
-    let lastFile = '';
-    for (const message of messages) {
-      if (lastFile !== message.file) {
-        result.push(`\n${message.file}: ${message.note}\n\n`);
-        lastFile = String(message.file);
-      }
-
-      result.push(`\t${message.line}:${message.column}\t${String(message.message)}\n`);
-    }
-
-    return FailVerdict(result.join('').trim());
-  },
-};
-
-export default rule;
+export default Rule({ id, context }, when, run);

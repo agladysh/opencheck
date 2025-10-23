@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@opencheck/lib": "workspace:*",
+    "iter-ops": "^3.5.0",
     "mdast-util-to-markdown": "^2.1.2",
     "remark-gfm": "^4.0.1",
     "remark-message-control": "^8.0.0",

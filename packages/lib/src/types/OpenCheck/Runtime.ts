@@ -2,8 +2,17 @@ import type { ArkErrors, JsonSchema } from '@ark/schema';
 import type { Type } from 'arktype';
 import type { SimpleGit } from 'simple-git';
 import { type Brand, make } from 'ts-brand';
+import type { FSEntryDir, FSEntryFile } from '../../FileSystem.ts';
 import type { JsonObject } from '../json.ts';
-import type { ProjectDirnamesContext, ProjectFilenamesContext, ProjectFilesContext } from './Context.ts';
+import type { OneOf } from '../OneOf.ts';
+import type { ContextProducer, ContextProducerResult } from './ContextProducer.ts';
+import type { IsContextProducerMap, RuntimeContext } from './Rule.ts';
+
+// TODO: Move closer to FileSystem.ts?
+export interface ProjectFile {
+  readonly entry: FSEntryFile;
+  readonly value: string; // TODO: Perhaps, VFile?
+}
 
 // TODO: Move this stuff to Git typings file
 export type GitObjectName = Brand<string, 'OpenCheck.GitObjectName'>;
@@ -26,9 +35,6 @@ export interface AISelectRequest<T extends AISelectOptions> {
   readonly options: T;
 }
 
-// TODO: Move to types/OneOf.ts
-export type OneOf<T> = T extends readonly [...unknown[]] ? T[keyof T] : never;
-
 // TODO: Move Git stuff to a separate object? GitRuntime, FSRuntime, AIRuntime?
 export interface Runtime {
   // TODO: Weird, both SimpleGit and ad-hoc functions are a bit redundant
@@ -44,11 +50,13 @@ export interface Runtime {
   gitLogNameStatus(from: string, to: string): Promise<string>;
   gitLogNameStatusSingle(commit: string): Promise<string>;
 
-  withTmpGitIndex<R>(fn: (git: SimpleGit) => Promise<R>): Promise<R>; // Deprecated (too low-level).
+  matchProjectFilenames(pattern: string | string[]): Promise<FSEntryFile[]>;
+  matchProjectDirnames(pattern: string | string[]): Promise<FSEntryDir[]>;
+  readMatchingProjectFiles(pattern: string | string[]): Promise<ProjectFile[]>;
+  readFile(entry: FSEntryFile): Promise<ProjectFile>;
 
-  matchProjectFilenames(pattern: string | string[]): Promise<ProjectFilenamesContext>;
-  matchProjectDirnames(pattern: string | string[]): Promise<ProjectDirnamesContext>;
-  readMatchingProjectFiles(pattern: string | string[]): Promise<ProjectFilesContext>;
+  resolveContextMap<M>(map: IsContextProducerMap<M>): Promise<RuntimeContext<M>>;
+  runContextProducer<P extends ContextProducer>(producer: P): Promise<ContextProducerResult<P>>;
 
   aiSelect<T extends AISelectOptions>(request: AISelectRequest<T>): Promise<AISelectOptionType<OneOf<T>>>;
 }

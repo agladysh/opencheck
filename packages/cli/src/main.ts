@@ -2,14 +2,17 @@
 
 import { FileSystem } from '@opencheck/lib/FileSystem.ts';
 import { findProjectRootPath } from '@opencheck/lib/findProjectRootPath.ts';
-import type { ContextRefMap, Rule, RuleID } from '@opencheck/lib/types/OpenCheck/Rule.ts';
+import type { Rule, RuleID, RuleRuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
 import type { Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
-import { contexts, rules } from '@opencheck/plugin-openspec'; // TODO: Use IPS
+import { rules } from '@opencheck/plugin-openspec'; // TODO: Use IPS
 import chalk from 'chalk';
 import ignore from 'ignore';
 import pkg from '../package.json' with { type: 'json' };
 import { CliRuntime } from './CliRuntime.ts';
 import { ContextCache } from './ContextCache.ts';
+
+// TODO: Consider trying xo instead of raw eslint
+// TODO: Add exports/package.json linter
 
 function setupFS(cwdPath: string): FileSystem {
   const projectRootPath = findProjectRootPath(cwdPath);
@@ -29,17 +32,17 @@ node_modules/
 // TODO: Verify no duplicate IDs in contexts and rules.
 async function main(): Promise<void> {
   const fs = setupFS(process.cwd());
-  const cache = new ContextCache(contexts);
+  const cache = new ContextCache();
   const runtime = new CliRuntime(fs, cache);
 
   const verdicts: [RuleID, Verdict][] = [];
 
   process.stdout.write(`${chalk.green.bold(`OpenCheck`)} ${chalk.gray(`${pkg.name} ${pkg.version}`)}\n`);
 
-  const runtimeRules = rules as readonly Rule<ContextRefMap>[];
+  const runtimeRules = rules as readonly Rule[];
 
   for (const rule of runtimeRules) {
-    const context = await runtime.resolveContextMap(rule.context);
+    const context = await runtime.resolveContextMap<RuleRuntimeContext<typeof rule>>(rule.context);
     const when = await rule.when(context, runtime);
     if (when !== true) {
       verdicts.push([rule.id, when]);
