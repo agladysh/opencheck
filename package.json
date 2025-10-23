@@ -38,7 +38,7 @@
   ],
   "author": "Alexander Gladysh <agladysh@gmail.com>",
   "license": "MIT",
-  "packageManager": "pnpm@10.18.2",
+  "packageManager": "pnpm@10.19.0",
   "dependencies": {
     "@opencheck/cli": "workspace:*",
     "@opencheck/lib": "workspace:*",
