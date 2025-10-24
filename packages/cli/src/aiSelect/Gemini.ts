@@ -97,20 +97,27 @@ async function generateContent(
   }
 
   try {
+    // console.log(JSON.stringify(request).length);
     return await ai.models.generateContent(request);
   } catch (e: unknown) {
-    console.error('generateContent', String(e));
-    console.log(JSON.stringify(e));
     if (!(e instanceof ApiError)) {
+      console.error('generateContent', String(e));
       throw e;
     }
     if (e.status === 503) {
-      // TODO: Handle 429 etc
       const delay = 10 * 1000;
       console.log(`generateContent: got 503, retrying in ${delay / 1000}s`);
       await setTimeout(delay); // TODO: Exponential backoff
       return generateContent(ai, request, { ...opts, maxRetries: opts.maxRetries - 1 });
     }
+    if (e.status === 429) {
+      const delay = Number((e.message.match(/"retryDelay":"(\d+)s"/) ?? [])[1] ?? 60) * 1000 + Math.random() * 3000;
+      console.log(`generateContent: got 429, retrying in ${delay / 1000}s`);
+      await setTimeout(delay); // TODO: Exponential backoff
+      // TPM/RPM limits are expected and do not decrease retry count
+      return generateContent(ai, request, opts);
+    }
+    console.error('generateContent', String(e));
     throw e;
   }
 }
