@@ -1,10 +1,11 @@
 import { RuleID, type RuntimeContext, Rule } from '@opencheck/lib/types/OpenCheck/Rule.ts';
-import type { ProjectFile, Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
+import { AISelectOptions, type ProjectFile, type Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
 import { FailVerdict, PassVerdict, SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
 
 import archivedChanges, { type ArchivedChange } from '@opencheck/plugin-openspec/context/changes/archived.ts';
 import hasOpenspecDir from '@opencheck/plugin-openspec/context/has-openspec-dir.ts';
 import project from '@opencheck/plugin-openspec/context/project.ts';
+import { type } from 'arktype';
 
 const id = RuleID('openspec/consistency/archived/changes-implemented');
 
@@ -36,8 +37,60 @@ interface AIContext {
   gitDiff: string;
 }
 
-async function check(_runtime: Runtime, context: AIContext): Promise<Verdict> {
-  return FailVerdict('ENOTIMPL\n' + JSON.stringify(context, null, 2));
+async function check(runtime: Runtime, context: AIContext): Promise<Verdict> {
+  // TODO: Identify proper role, task, standard and method wordings.
+  const response = await runtime.aiSelect({
+    system: `
+  # Role
+
+  <role>
+  Change Implementation Auditor
+  </role>
+
+  # Task
+
+  <task>
+  Study the provided Project Description.
+  Identify the Change "${context.changeId.trim()}" specification in the information provided below.
+  Study the specification in detail.
+  Study the provided diffs.
+  Determine, whether the Change "${context.changeId.trim()}" was actually implemented in the diffs as specified.
+  </task>
+
+  # Project Description
+
+  <project-description>
+  ${context.projectDescription.value.trim()}
+  </project-description>
+
+  # Git Log Excerpt
+
+  <git-log>
+  ${context.gitLog?.trim() ?? '(not applicable)' /* TODO: Exclude the block then */}
+  </git-log>
+
+  # Git Diff Stat
+
+  <git-diff-stat>
+  ${context.gitDiffStat.trim()}
+  </git-diff-stat>
+
+  # Git Diff
+
+  <git-diff>
+  ${context.gitDiff.trim()}
+  </git-diff>
+`.trim(),
+    user: 'Closely study the information provided above. Execute the Task dilligently and rigorously.',
+    options: AISelectOptions([
+      type({
+        answer: '"Before we begin, here is how I understand the Task, to make sure we are in sync"',
+        myUnderstanding: 'string > 0',
+      }),
+    ]),
+  });
+
+  return FailVerdict('ENOTIMPL\n' + JSON.stringify(response, null, 2));
 }
 
 async function checkUntrackedAdHocChange(

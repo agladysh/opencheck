@@ -23,11 +23,16 @@ export interface AISelectOption<T extends JsonObject = JsonObject> {
   jsonSchema: JsonSchema;
   validate(value: unknown): T | ArkErrors;
 }
-const AISelectOption = <T extends Type>(t: T) => ({ validate: t, jsonSchema: t.toJsonSchema() });
+const AISelectOption = <T extends Type<JsonObject>>(t: T): AISelectOption<typeof t.infer> => ({
+  validate: t,
+  jsonSchema: t.toJsonSchema(),
+});
 
 export type AISelectOptionType<T> = T extends AISelectOption<infer U> ? U : never;
 
-export type AISelectOptions = readonly [AISelectOption, ...AISelectOption[]];
+export type AISelectOptions = AISelectOption[];
+export const AISelectOptions = <T extends [Type<JsonObject>, ...Type<JsonObject>[]]>(t: T) =>
+  t.map((o) => AISelectOption(o));
 
 export interface AISelectRequest<T extends AISelectOptions> {
   readonly system: string;
