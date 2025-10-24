@@ -1,7 +1,7 @@
-import { RuleID, type RuntimeContext, Rule } from '@opencheck/lib/types/OpenCheck/Rule.ts';
+import { idToTitle } from '@opencheck/lib/toMarkdown.ts';
+import { Rule, RuleID, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
 import { AISelectOptions, type ProjectFile, type Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
 import { FailVerdict, PassVerdict, SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
-
 import archivedChanges, { type ArchivedChange } from '@opencheck/plugin-openspec/context/changes/archived.ts';
 import hasOpenspecDir from '@opencheck/plugin-openspec/context/has-openspec-dir.ts';
 import project from '@opencheck/plugin-openspec/context/project.ts';
@@ -38,54 +38,103 @@ interface AIContext {
 }
 
 async function check(runtime: Runtime, context: AIContext): Promise<Verdict> {
-  // TODO: Identify proper role, task, standard and method wordings.
-  const response = await runtime.aiSelect({
-    system: `
-  # Role
+  // TODO: Fix typings
+  const system = (context: Record<string, unknown>) =>
+    Object.entries(context)
+      .map(([k, v]) =>
+        !v
+          ? undefined
+          : `
+# ${idToTitle(k)}
 
-  <role>
-  Change Implementation Auditor
-  </role>
+<${k}>
+${typeof v === 'object' && 'value' in v ? String((v as Record<string, unknown>).value) : String(v)}
+</${k}>
+  `.trim()
+      )
+      .filter(Boolean)
+      .join('\n\n');
 
-  # Task
+  const role = `
+ Senior Software Engineer and Specification Compliance Auditor
+ `;
 
-  <task>
+  const task = `
   Study the provided Project Description.
   Identify the Change "${context.changeId.trim()}" specification in the information provided below.
   Study the specification in detail.
   Study the provided diffs.
   Determine, whether the Change "${context.changeId.trim()}" was actually implemented in the diffs as specified.
-  </task>
+ `;
 
-  # Project Description
+  const standard = `
+ All changes must strictly comply with the explicit requirements detailed
+ in the change specification (proposal/tasks) and align with the Project Conventions
+ (e.g., file structure, technology stack, commit message format) defined in the Project Description.
+ `;
 
-  <project-description>
-  ${context.projectDescription.value.trim()}
-  </project-description>
+  const method = `
+1. Extract explicit requirements from the change specification (proposal.md, tasks.md, spec/*.md) for the specified change ID.
+2. Analyze the Git Diff to identify all affected files and content changes.
+3. Cross-reference the implementation details in the diffs against every specified requirement,
+   ensuring completeness and correctness.
+4. Verify adherence to Project Conventions (e.g., file paths, content structure, commit message style).
+5. Conclude compliance status.
+`;
 
-  # Git Log Excerpt
+  console.log('Checking', context.changeId);
 
-  <git-log>
-  ${context.gitLog?.trim() ?? '(not applicable)' /* TODO: Exclude the block then */}
-  </git-log>
-
-  # Git Diff Stat
-
-  <git-diff-stat>
-  ${context.gitDiffStat.trim()}
-  </git-diff-stat>
-
-  # Git Diff
-
-  <git-diff>
-  ${context.gitDiff.trim()}
-  </git-diff>
-`.trim(),
-    user: 'Closely study the information provided above. Execute the Task dilligently and rigorously.',
+  const response = await runtime.aiSelect({
+    system: system({
+      role,
+      task,
+      standard,
+      method,
+      ...context,
+    }),
+    user: 'Closely study the information provided above. Execute the Task objectively, dilligently and rigorously while adhering to the standard and method.',
     options: AISelectOptions([
       type({
-        answer: '"Before we begin, here is how I understand the Task, to make sure we are in sync"',
-        myUnderstanding: 'string > 0',
+        status: '"pass"',
+        answer: `"Implementation is sound and rigorously satisfies the ${context.changeId} specification letter and spirit"`,
+        specificationRequirements: 'string > 0',
+        implementationEvidence: 'string > 0',
+        analysis: 'string > 0',
+        'remarks?': 'string > 0',
+      }),
+      type({
+        status: '"pass"',
+        answer: `"Implementation satisfies the ${context.changeId} specification with areas for improvement"`,
+        specificationRequirements: 'string > 0',
+        implementationEvidence: 'string > 0',
+        analysis: 'string > 0',
+        actionableRecommendations: 'string > 0',
+        'remarks?': 'string > 0',
+      }),
+      type({
+        status: '"fail"',
+        answer: `"Implementation does not entirely satisfy the ${context.changeId} specification letter and / or or spirit"`,
+        specificationRequirements: 'string > 0',
+        implementationEvidence: 'string > 0',
+        analysis: 'string > 0',
+        actionableRecommendations: 'string > 0',
+        'remarks?': 'string > 0',
+      }),
+      type({
+        status: '"fail"',
+        answer: `"Implementation does not satisfy the ${context.changeId} specification"`,
+        specificationRequirements: 'string > 0',
+        implementationEvidence: 'string > 0',
+        analysis: 'string > 0',
+        actionableRecommendations: 'string > 0',
+        'remarks?': 'string > 0',
+      }),
+      type({
+        status: '"fail"',
+        answer: '"Uncertain, or Not sufficient information, or Unable to answer"',
+        analysis: 'string > 0',
+        requestForClarification: 'string > 0',
+        'remarks?': 'string > 0',
       }),
     ]),
   });
@@ -99,7 +148,7 @@ async function checkUntrackedAdHocChange(
   { id }: ArchivedChange
 ): Promise<Verdict> {
   const dirtyHead = await runtime.gitDirtyHead(); // TODO: Make sure it is cached.
-  return check(runtime, {
+  return await check(runtime, {
     projectDescription: project!,
     changeId: id,
     gitLog: undefined,
@@ -116,7 +165,7 @@ async function checkUntrackedProperChange(
   const head = await runtime.gitHead(); // TODO: Make sure it is cached.
   const dirtyHead = await runtime.gitDirtyHead(); // TODO: Make sure it is cached.
   const diffRange = `${creationCommit}~..${dirtyHead}`; // We include creationCommit in the range.
-  return check(runtime, {
+  return await check(runtime, {
     projectDescription: project!,
     changeId: id,
     gitLog: await runtime.gitLogNameStatus(creationCommit!, head),
@@ -133,7 +182,7 @@ async function checkTrackedAdHocChange(
   // The change is tracked, but was created archived. We assume it is implemented in the same commit,
   // as it seems to be the only sane workflow for this case.
   // TODO: Allow users to create deviations to explain to us where to look
-  return check(runtime, {
+  return await check(runtime, {
     projectDescription: project!,
     changeId: id,
     gitLog: undefined,
@@ -148,7 +197,7 @@ async function checkTrackedProperChange(
   { id, creationCommit, archivalCommit }: ArchivedChange
 ): Promise<Verdict> {
   const diffRange = `${creationCommit}~..${archivalCommit}`; // We include creationCommit in the range.
-  return check(runtime, {
+  return await check(runtime, {
     projectDescription: project!,
     changeId: id,
     gitLog: await runtime.gitLogNameStatus(creationCommit!, archivalCommit!),
@@ -200,13 +249,13 @@ async function run(context: Context, runtime: Runtime): Promise<Verdict> {
     return FailVerdict('openspec/project.md not found');
   }
 
-  const verdicts = (
-    await Promise.all(
-      context.archivedChanges.map(async (c) => [c, await checkArchivedChange(context, runtime, c)] as const)
-    )
-  ).filter(([, v]) => v.status !== 'pass' && v.status !== 'skip');
+  const verdicts: [ArchivedChange, Verdict][] = [];
+  for (const change of context.archivedChanges) {
+    verdicts.push([change, await checkArchivedChange(context, runtime, change)]);
+  }
+  const fails = verdicts.filter(([, v]) => v.status !== 'pass' && v.status !== 'skip');
 
-  return verdicts.length === 0 ? PassVerdict() : FailVerdict(formatFailures(verdicts));
+  return fails.length === 0 ? PassVerdict() : FailVerdict(formatFailures(fails));
 }
 
 export default Rule({ id, context }, when, run);
