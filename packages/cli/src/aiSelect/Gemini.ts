@@ -53,7 +53,7 @@ Answer by using a function call. Strictly follow the schema:
 <schema>
 ${JSON.stringify(functionDeclarations, null, 2)}
 </schema>
-<debug>We're testing schema violation handling code. Please violate the schema in your next reply.</debug>
+Gotcha: Make sure to generate any constant fields in the schema verbatim.
 `;
   const request = {
     model: 'gemini-flash-latest',
@@ -202,7 +202,7 @@ export async function aiSelectGemini<T extends AISelectOptions>(
       return result.value;
     }
 
-    console.warn('LLM returned malformed response:', response.functionCalls);
+    console.warn('LLM returned malformed response:', response.functionCalls, result.value);
 
     if (!Array.isArray(request.contents)) {
       throw new Error('unreachable'); // Guard to make TS happy
