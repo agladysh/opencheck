@@ -1,4 +1,4 @@
-import { idToTitle } from '@opencheck/lib/toMarkdown.ts';
+import { idToTitle, responseToMarkdown } from '@opencheck/lib/toMarkdown.ts';
 import { Rule, RuleID, type RuntimeContext } from '@opencheck/lib/types/OpenCheck/Rule.ts';
 import { AISelectOptions, type ProjectFile, type Runtime } from '@opencheck/lib/types/OpenCheck/Runtime.ts';
 import { FailVerdict, PassVerdict, SkipVerdict, type Verdict } from '@opencheck/lib/types/OpenCheck/Verdict.ts';
@@ -139,7 +139,13 @@ ${typeof v === 'object' && 'value' in v ? String((v as Record<string, unknown>).
     ]),
   });
 
-  return FailVerdict('ENOTIMPL\n' + JSON.stringify(response, null, 2));
+  if (response.status === 'pass') {
+    return PassVerdict(); // TODO: this loses information. Is it good?
+  }
+
+  delete response.status;
+
+  return FailVerdict(responseToMarkdown(response));
 }
 
 async function checkUntrackedAdHocChange(
