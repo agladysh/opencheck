@@ -84,6 +84,8 @@ ${typeof v === 'object' && 'value' in v ? String((v as Record<string, unknown>).
 
   console.log('Checking', context.changeId);
 
+  // TODO: Extract base fields to a type
+  // TODO: Update task and standard to match fields
   const response = await runtime.aiSelect({
     system: system({
       role,
@@ -140,10 +142,21 @@ ${typeof v === 'object' && 'value' in v ? String((v as Record<string, unknown>).
   });
 
   if (response.status === 'pass') {
-    return PassVerdict(); // TODO: this loses information. Is it good?
+    return PassVerdict(); // TODO: This loses information. Display it in verbose mode for notes and very verbose mode for remarks?
   }
 
-  delete response.status;
+  // TODO: For Fail verdicts: feed *current* spec and code, see if it resolves (was fixed later).
+  //       If not, recommend amending archived spec via errata (implementation is better),
+  //       or speccing and implementing fix (spec is better), or logging deviation (spec is better,
+  //       but implementing it is not advisable or something).
+
+  // TODO: Add dedicated implementation not provided clause, triggering git log analysis cascade,
+  //       which would update the commits and redo (on happy path)
+
+  // TODO: This probably means that this analysis is a part of the context (or third type: analysis/audit), not rule.
+  //       Rule is what to do with the analysis
+
+  delete response.status; // TODO: Consider removing more fields
 
   return FailVerdict(responseToMarkdown(response));
 }
@@ -255,6 +268,8 @@ async function run(context: Context, runtime: Runtime): Promise<Verdict> {
     return FailVerdict('openspec/project.md not found');
   }
 
+  // TODO: We do need to be able to return several verdicts for nicer formatting.
+  //       As well: highlight as Markdown on print unless disabled
   const verdicts: [ArchivedChange, Verdict][] = [];
   for (const change of context.archivedChanges) {
     verdicts.push([change, await checkArchivedChange(context, runtime, change)]);

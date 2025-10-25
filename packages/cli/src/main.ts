@@ -30,6 +30,7 @@ node_modules/
 }
 
 // TODO: Verify no duplicate IDs in contexts and rules.
+// TODO: Check if we run via [P]NPX via git repo, document in README
 async function main(): Promise<void> {
   const fs = setupFS(process.cwd());
   const cache = new ContextCache();
