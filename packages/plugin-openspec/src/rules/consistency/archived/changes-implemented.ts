@@ -160,8 +160,8 @@ ${typeof v === 'object' && 'value' in v ? String((v as Record<string, unknown>).
   // TODO: Add dedicated implementation not provided clause, triggering git log analysis cascade,
   //       which would update the commits and redo (on happy path)
 
-  // TODO: This probably means that this analysis is a part of the context (or third type: analysis/audit), not rule.
-  //       Rule is what to do with the analysis
+  // TODO: This probably means that this analysis is a part of the context (or third type: analysis/audit, then context is artefacts),
+  //       not rule. Rule is what to do with the analysis.
 
   delete response.status; // TODO: Consider removing more fields
 
